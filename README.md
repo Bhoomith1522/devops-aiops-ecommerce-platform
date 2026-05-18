@@ -87,29 +87,16 @@ This project demonstrates:
 
 ---
 
-# Architecture Diagram
 
-![Architecture](screenshots/architecture.png)
+# project Screenshots
 
----
-
-# Project Screenshots
-
-## Frontend UI
+## Frontend Dashboard UI
 
 ![Frontend UI](screenshots/frontend-ui.png)
 
----
+![Frontend UI 2](screenshots/frontend-ui%20(1).png)
 
-## Grafana Monitoring Dashboard
-
-![Grafana Dashboard](screenshots/grafana-dashboard.png)
-
----
-
-## Prometheus Metrics
-
-![Prometheus Metrics](screenshots/prometheus-metrics.png)
+![Frontend UI 3](screenshots/frontend-ui%20(2).png)
 
 ---
 
@@ -118,6 +105,40 @@ This project demonstrates:
 ![AIOps Analysis](screenshots/aiops-analysis.png)
 
 ---
+
+## Backend API
+
+![Backend API](screenshots/backend-api.png)
+
+---
+
+## Docker Containers
+
+![Docker Containers](screenshots/docker-containers.png)
+
+---
+
+## Grafana Monitoring Dashboard
+
+![Grafana Dashboard](screenshots/grafana-dashboard.png)
+
+![Grafana Dashboard 2](screenshots/grafana-dashboard%20(2).png)
+
+---
+
+## Prometheus Metrics
+
+![Prometheus Metrics](screenshots/prometheus-metrics.png)
+
+![Prometheus Metrics 2](screenshots/prometheus-metrics%20(2).png)
+
+![Prometheus Metrics 3](screenshots/prometheus-metrics%20(3).png)
+
+---
+
+## Architecture Diagram
+
+![Architecture](screenshots/architecture.png)
 
 # System Architecture
 
