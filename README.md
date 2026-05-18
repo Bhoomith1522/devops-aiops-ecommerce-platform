@@ -89,7 +89,7 @@ This project demonstrates:
 
 # Architecture Diagram
 
-![Architecture](screenshots/architecture-diagram.png)
+![Architecture](screenshots/architecture.png)
 
 ---
 
