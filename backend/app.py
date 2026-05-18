@@ -1,12 +1,42 @@
 from flask import Flask, jsonify, request
 from flask_cors import CORS
+from dotenv import load_dotenv
+from prometheus_flask_exporter import PrometheusMetrics
+
 import psycopg2
 import time
+import os
+import logging
+import requests
+
+# -----------------------------------
+# LOAD ENV VARIABLES
+# -----------------------------------
+
+load_dotenv()
+
+# -----------------------------------
+# APP CONFIG
+# -----------------------------------
 
 app = Flask(__name__)
 
-# Enable CORS
 CORS(app)
+
+# -----------------------------------
+# PROMETHEUS METRICS
+# -----------------------------------
+
+metrics = PrometheusMetrics(app)
+
+# -----------------------------------
+# LOGGING CONFIG
+# -----------------------------------
+
+logging.basicConfig(
+    level=logging.INFO,
+    format="%(asctime)s - %(levelname)s - %(message)s"
+)
 
 # -----------------------------------
 # DATABASE CONNECTION
@@ -19,22 +49,21 @@ def get_db_connection():
         try:
 
             conn = psycopg2.connect(
-                host="db",
-                database="ecommerce",
-                user="postgres",
-                password="postgres"
+                host=os.getenv("DB_HOST", "db"),
+                database=os.getenv("DB_NAME", "ecommerce"),
+                user=os.getenv("DB_USER", "postgres"),
+                password=os.getenv("DB_PASSWORD", "postgres")
             )
 
-            print("Database connected successfully!")
+            logging.info("Database connected successfully!")
 
             return conn
 
         except Exception as e:
 
-            print("Database connection failed:")
-            print(e)
+            logging.error(f"Database connection failed: {e}")
 
-            print("Retrying in 5 seconds...")
+            logging.info("Retrying in 5 seconds...")
 
             time.sleep(5)
 
@@ -48,7 +77,7 @@ def initialize_database():
 
     cur = conn.cursor()
 
-    # Create table
+    # Create products table
     cur.execute("""
         CREATE TABLE IF NOT EXISTS products (
             id SERIAL PRIMARY KEY,
@@ -62,7 +91,7 @@ def initialize_database():
 
     count = cur.fetchone()[0]
 
-    # Insert default data only once
+    # Insert default products only once
     if count == 0:
 
         cur.execute("""
@@ -78,7 +107,7 @@ def initialize_database():
     cur.close()
     conn.close()
 
-# Initialize DB at startup
+# Initialize DB
 initialize_database()
 
 # -----------------------------------
@@ -93,34 +122,55 @@ def home():
     })
 
 # -----------------------------------
+# HEALTH CHECK
+# -----------------------------------
+
+@app.route("/health")
+def health_check():
+
+    return jsonify({
+        "status": "healthy"
+    })
+
+# -----------------------------------
 # GET PRODUCTS
 # -----------------------------------
 
 @app.route("/products", methods=["GET"])
 def get_products():
 
-    conn = get_db_connection()
+    try:
 
-    cur = conn.cursor()
+        conn = get_db_connection()
 
-    cur.execute("SELECT * FROM products;")
+        cur = conn.cursor()
 
-    rows = cur.fetchall()
+        cur.execute("SELECT * FROM products;")
 
-    products = []
+        rows = cur.fetchall()
 
-    for row in rows:
+        products = []
 
-        products.append({
-            "id": row[0],
-            "name": row[1],
-            "price": row[2]
-        })
+        for row in rows:
 
-    cur.close()
-    conn.close()
+            products.append({
+                "id": row[0],
+                "name": row[1],
+                "price": row[2]
+            })
 
-    return jsonify(products)
+        cur.close()
+        conn.close()
+
+        return jsonify(products)
+
+    except Exception as e:
+
+        logging.error(f"Error fetching products: {e}")
+
+        return jsonify({
+            "error": str(e)
+        }), 500
 
 # -----------------------------------
 # ADD PRODUCT
@@ -129,31 +179,43 @@ def get_products():
 @app.route("/products", methods=["POST"])
 def add_product():
 
-    data = request.get_json()
+    try:
 
-    name = data["name"]
-    price = data["price"]
+        data = request.get_json()
 
-    conn = get_db_connection()
+        name = data["name"]
+        price = data["price"]
 
-    cur = conn.cursor()
+        conn = get_db_connection()
 
-    cur.execute(
-        """
-        INSERT INTO products (name, price)
-        VALUES (%s, %s)
-        """,
-        (name, price)
-    )
+        cur = conn.cursor()
 
-    conn.commit()
+        cur.execute(
+            """
+            INSERT INTO products (name, price)
+            VALUES (%s, %s)
+            """,
+            (name, price)
+        )
 
-    cur.close()
-    conn.close()
+        conn.commit()
 
-    return jsonify({
-        "message": "Product added successfully!"
-    }), 201
+        cur.close()
+        conn.close()
+
+        logging.info(f"Product added: {name}")
+
+        return jsonify({
+            "message": "Product added successfully!"
+        }), 201
+
+    except Exception as e:
+
+        logging.error(f"Error adding product: {e}")
+
+        return jsonify({
+            "error": str(e)
+        }), 500
 
 # -----------------------------------
 # UPDATE PRODUCT
@@ -162,32 +224,44 @@ def add_product():
 @app.route("/products/<int:id>", methods=["PUT"])
 def update_product(id):
 
-    data = request.get_json()
+    try:
 
-    name = data["name"]
-    price = data["price"]
+        data = request.get_json()
 
-    conn = get_db_connection()
+        name = data["name"]
+        price = data["price"]
 
-    cur = conn.cursor()
+        conn = get_db_connection()
 
-    cur.execute(
-        """
-        UPDATE products
-        SET name = %s, price = %s
-        WHERE id = %s
-        """,
-        (name, price, id)
-    )
+        cur = conn.cursor()
 
-    conn.commit()
+        cur.execute(
+            """
+            UPDATE products
+            SET name = %s, price = %s
+            WHERE id = %s
+            """,
+            (name, price, id)
+        )
 
-    cur.close()
-    conn.close()
+        conn.commit()
 
-    return jsonify({
-        "message": "Product updated successfully!"
-    })
+        cur.close()
+        conn.close()
+
+        logging.info(f"Product updated: {id}")
+
+        return jsonify({
+            "message": "Product updated successfully!"
+        })
+
+    except Exception as e:
+
+        logging.error(f"Error updating product: {e}")
+
+        return jsonify({
+            "error": str(e)
+        }), 500
 
 # -----------------------------------
 # DELETE PRODUCT
@@ -196,23 +270,91 @@ def update_product(id):
 @app.route("/products/<int:id>", methods=["DELETE"])
 def delete_product(id):
 
-    conn = get_db_connection()
+    try:
 
-    cur = conn.cursor()
+        conn = get_db_connection()
 
-    cur.execute(
-        "DELETE FROM products WHERE id = %s",
-        (id,)
-    )
+        cur = conn.cursor()
 
-    conn.commit()
+        cur.execute(
+            "DELETE FROM products WHERE id = %s",
+            (id,)
+        )
 
-    cur.close()
-    conn.close()
+        conn.commit()
 
-    return jsonify({
-        "message": "Product deleted successfully!"
-    })
+        cur.close()
+        conn.close()
+
+        logging.info(f"Product deleted: {id}")
+
+        return jsonify({
+            "message": "Product deleted successfully!"
+        })
+
+    except Exception as e:
+
+        logging.error(f"Error deleting product: {e}")
+
+        return jsonify({
+            "error": str(e)
+        }), 500
+
+# -----------------------------------
+# AIOPS LOG ANALYZER (OLLAMA)
+# -----------------------------------
+
+@app.route("/analyze-log", methods=["POST"])
+def analyze_log():
+
+    try:
+
+        data = request.get_json()
+
+        log_message = data.get("log")
+
+        if not log_message:
+
+            return jsonify({
+                "error": "Log message is required"
+            }), 400
+
+        prompt = f"""
+        Analyze this DevOps system log.
+
+        Explain:
+        1. Possible issue
+        2. Root cause
+        3. Suggested fix
+
+        Log:
+        {log_message}
+        """
+
+        response = requests.post(
+            "http://host.docker.internal:11434/api/generate",
+            json={
+                "model": "gemma:2b",
+                "prompt": prompt,
+                "stream": False
+            }
+        )
+
+        result = response.json()["response"]
+
+        logging.info("AI log analysis completed successfully")
+
+        return jsonify({
+            "analysis": result
+        })
+
+    except Exception as e:
+
+        logging.error(f"AIOps analysis error: {e}")
+
+        return jsonify({
+            "error": str(e)
+        }), 500
 
 # -----------------------------------
 # MAIN
@@ -220,4 +362,7 @@ def delete_product(id):
 
 if __name__ == "__main__":
 
-    app.run(host="0.0.0.0", port=5000)
+    app.run(
+        host="0.0.0.0",
+        port=5000
+    )

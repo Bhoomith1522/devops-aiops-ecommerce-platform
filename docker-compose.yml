@@ -1,7 +1,15 @@
+version: "3.9"
+
 services:
 
+  # -----------------------------------
+  # FRONTEND
+  # -----------------------------------
+
   frontend:
-    build: ./frontend
+
+    build:
+      context: ./frontend
 
     ports:
       - "3000:3000"
@@ -9,16 +17,37 @@ services:
     depends_on:
       - backend
 
+    restart: always
+
+  # -----------------------------------
+  # BACKEND
+  # -----------------------------------
+
   backend:
-    build: ./backend
+
+    build:
+      context: ./backend
 
     ports:
       - "5000:5000"
 
+    environment:
+      DB_HOST: db
+      DB_NAME: ecommerce
+      DB_USER: postgres
+      DB_PASSWORD: postgres
+
     depends_on:
       - db
 
+    restart: always
+
+  # -----------------------------------
+  # POSTGRES DATABASE
+  # -----------------------------------
+
   db:
+
     image: postgres:15
 
     environment:
@@ -32,5 +61,47 @@ services:
     volumes:
       - postgres_data:/var/lib/postgresql/data
 
+    restart: always
+
+  # -----------------------------------
+  # PROMETHEUS
+  # -----------------------------------
+
+  prometheus:
+
+    image: prom/prometheus
+
+    ports:
+      - "9090:9090"
+
+    volumes:
+      - ./prometheus.yml:/etc/prometheus/prometheus.yml
+
+    depends_on:
+      - backend
+
+    restart: always
+
+  # -----------------------------------
+  # GRAFANA
+  # -----------------------------------
+
+  grafana:
+
+    image: grafana/grafana
+
+    ports:
+      - "3001:3000"
+
+    depends_on:
+      - prometheus
+
+    restart: always
+
+# -----------------------------------
+# VOLUMES
+# -----------------------------------
+
 volumes:
+
   postgres_data:
